@@ -7,40 +7,6 @@
 > mock API). Desktop + Android builds are explicitly **out-of-scope for now** —
 > see §13 future-work for the upgrade path.
 
-## 0 · Bootstrap status (current state vs target)
-
-The remote `git@github.com:EggProject/easter-hermes-wow-kanban.git` was **empty
-at clone time** (0 commits, GitHub API size=0KB, ssh auth OK as user
-`eggprojectteams`). Local repo initialised with `git init -b main` + `git
-remote add origin <url>`, no upstream commits to track yet.
-
-**Files that DO NOT exist yet** (worker profiles should assume they need to
-be created, not edited):
-
-| Path | Status | Owner of first PR |
-|---|---|---|
-| `app/` (Expo Router screens) | not created | frontend-coder |
-| `app.config.ts` | not created | frontend-coder |
-| `eas.json` | not created | devops-releaser |
-| `package.json` / `package-lock.json` | not created | frontend-coder |
-| `tsconfig.json` | not created | frontend-coder |
-| `eslint.config.js` | not created | frontend-coder |
-| `metro.config.js` | not created | frontend-coder |
-| `vitest.config.ts` | not created | frontend-coder |
-| `.maestro/` (E2E flows) | not created | qa-e2e-tester |
-| `src/mocks/handlers.ts` (MSW) | not created | frontend-coder |
-| `src/mocks/browser.ts` + `src/mocks/native.ts` | not created | frontend-coder |
-| `babel.config.js` | not created | frontend-coder |
-| `index.ts` (Expo entry) | not created | frontend-coder |
-| `.gitignore` | not created | frontend-coder |
-
-**First triage card suggestion**: `bootstrap-expo-webapp` — a single
-`frontend-coder` task that scaffolds `package.json`, `app/`, `app.config.ts`,
-`metro.config.js`, `tsconfig.json`, `eslint.config.js`, `vitest.config.ts`,
-MSW handlers + worker, .gitignore, and one smoke screen ("Hello Kanban")
-verifying `npx expo start --web` boots. Subsequent feature cards land
-*after* this bootstrap closes.
-
 ## 1 · Identity
 - **Project name**: `easter-hermes-wow-kanban`
 - **Display name**: Easter Hermes WOW Kanban
