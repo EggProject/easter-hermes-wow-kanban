@@ -1,0 +1,286 @@
+# AGENTS.md — Easter Hermes WOW Kanban
+
+> Auto-bootstrapped by the `new-hermes-project` skill on 2026-07-01.
+> Worked from the `AGENTS.react-native.md` example, adapted for **webapp-first**
+> scope (Expo SDK 56 + RN 0.85 + TypeScript, New Architecture on, Node 26.3.0
+> runtime, npm 11.16.0 package manager, Vitest unit + Maestro E2E, MSW for
+> mock API). Desktop + Android builds are explicitly **out-of-scope for now** —
+> see §13 future-work for the upgrade path.
+
+## 0 · Bootstrap status (current state vs target)
+
+The remote `git@github.com:EggProject/easter-hermes-wow-kanban.git` was **empty
+at clone time** (0 commits, GitHub API size=0KB, ssh auth OK as user
+`eggprojectteams`). Local repo initialised with `git init -b main` + `git
+remote add origin <url>`, no upstream commits to track yet.
+
+**Files that DO NOT exist yet** (worker profiles should assume they need to
+be created, not edited):
+
+| Path | Status | Owner of first PR |
+|---|---|---|
+| `app/` (Expo Router screens) | not created | frontend-coder |
+| `app.config.ts` | not created | frontend-coder |
+| `eas.json` | not created | devops-releaser |
+| `package.json` / `package-lock.json` | not created | frontend-coder |
+| `tsconfig.json` | not created | frontend-coder |
+| `eslint.config.js` | not created | frontend-coder |
+| `metro.config.js` | not created | frontend-coder |
+| `vitest.config.ts` | not created | frontend-coder |
+| `.maestro/` (E2E flows) | not created | qa-e2e-tester |
+| `src/mocks/handlers.ts` (MSW) | not created | frontend-coder |
+| `src/mocks/browser.ts` + `src/mocks/native.ts` | not created | frontend-coder |
+| `babel.config.js` | not created | frontend-coder |
+| `index.ts` (Expo entry) | not created | frontend-coder |
+| `.gitignore` | not created | frontend-coder |
+
+**First triage card suggestion**: `bootstrap-expo-webapp` — a single
+`frontend-coder` task that scaffolds `package.json`, `app/`, `app.config.ts`,
+`metro.config.js`, `tsconfig.json`, `eslint.config.js`, `vitest.config.ts`,
+MSW handlers + worker, .gitignore, and one smoke screen ("Hello Kanban")
+verifying `npx expo start --web` boots. Subsequent feature cards land
+*after* this bootstrap closes.
+
+## 1 · Identity
+- **Project name**: `easter-hermes-wow-kanban`
+- **Display name**: Easter Hermes WOW Kanban
+- **Purpose**: "A fresh take on the Hermes kanban board :)"
+- **Primary language**: TypeScript (target ≥ 95%).
+- **License**: UNKNOWN — needs human (researcher fills from any LICENSE file once added).
+- **Repository URL**: `git@github.com:EggProject/easter-hermes-wow-kanban.git`
+- **Board slug**: `easter-hermes-wow-kanban`
+
+## 2 · Stack
+- **Runtime (host/CI)**: **Node.js 26.3.0** (verified via `node --version` at
+  bootstrap; pinned via `.nvmrc` or `.node-version` in the first PR). The app's
+  JS runs on Hermes V1 in the on-device/web runtime.
+- **Package manager / script runner**: **npm 11.16.0** (`npm install`,
+  `npm run`, `npx`). `package-lock.json` is authoritative. No Bun for this
+  project (kept simple per stack interview).
+- **Bundler**: **Metro** (RN's own, via Expo Metro Config — `metro.config.js`).
+- **Framework**: **Expo SDK 56** with **Expo Router** (file-based routing in
+  `app/`). Web target only for now (see §13).
+- **React Native**: **0.85** (bundled by SDK 56), React **19.2.3**.
+- **Architecture**: **New Architecture (Fabric + TurboModules) is ON** — it is
+  the only runtime as of RN 0.82. Hermes V1 is the default JS engine.
+- **State management**: Zustand for client state (when needed). No Redux.
+  TanStack Query only if/when a real backend appears.
+- **Mock API**: **MSW (Mock Service Worker) v2** via `msw/native` export. We
+  use `msw/native` (not `msw/node`) because the target runtime includes React
+  Native — see https://mswjs.io/docs/integrations/react-native/ . Polyfills
+  (see MSW docs §Polyfills) must be applied via `index.ts` before the worker
+  starts. For web-only development (`expo start --web`) the same `msw/native`
+  works because the Expo Web runtime goes through fetch. NOTE: when MSW
+  upgrades to a version that ships a separate `msw/browser` for web, prefer
+  that for web-only flows and keep `msw/native` for the future Android build.
+- **Native modules**: Expo modules + config plugins (CNG). `ios/` and
+  `android/` are **generated** by `expo prebuild` and gitignored. They are
+  out-of-scope for this phase.
+- **CI / release**: TBD (no deployment target chosen yet — see §13).
+
+## 3 · Layout
+
+```
+app/                       Expo Router file-based routes (web-only for now)
+  _layout.tsx              Root layout (providers, Stack)
+  (tabs)/                  Tab navigator group (when multi-screen scope lands)
+  index.tsx                Default landing screen
+components/                Pure UI components — no data fetching, no navigation
+features/                  Vertical slices (screen logic + hooks + tests)
+src/
+  api/                     Typed fetch wrappers (currently MSW-only)
+  store/                   Zustand stores (when needed)
+  observability/           Logger (no console.*)
+  mocks/                   MSW setup
+    handlers.ts            REST handlers (per-endpoint mocks)
+    browser.ts             setupWorker for `expo start --web`
+    native.ts              setupServer for `msw/native` polyfill setup
+assets/                    Fonts, images, icons
+e2e/                       Maestro flows (*.yaml) — run on web preview
+app.config.ts              Expo config + config plugins
+.gitignore                 Standard Expo + RN ignores + ios/, android/
+# ios/ and android/ are generated by `expo prebuild` — gitignored, NEVER edited by hand
+# docs/adr/                 Architecture Decision Records
+# .research/                Researcher-profile scratch
+# .worktrees/              Per-task git worktrees (orchestrator-managed)
+```
+
+## 4 · Commands
+
+| Action | Command |
+|---|---|
+| Install | `npm install --no-audit --no-fund` |
+| Dev (web) | `npm run start` (alias for `npx expo start --web`) |
+| Dev (Android, future) | `npx expo run:android` (when §13 upgrade happens) |
+| Unit / component tests | `npm run test` (Vitest + RNTL; `--watch` in dev) |
+| E2E | `npm run e2e` (`maestro test .maestro/` against a preview web build) |
+| Lint | `npm run lint` (`eslint . --max-warnings=0`) + `npm run format:check` |
+| Format | `npm run format` (`prettier --write .`) |
+| Type-check | `npm run typecheck` (`tsc --noEmit`) |
+| Prebuild (only when adding native) | `npx expo prebuild --clean` |
+| Coverage | `npm run test:coverage` |
+
+## 5 · Lint & style — STRICT (per discipline interview)
+- ESLint flat config (`eslint.config.js`) built on **`eslint-config-expo`**
+  (wraps `@react-native/eslint-config`) + **`@typescript-eslint/strict-type-checked`**
+  + **`@typescript-eslint/stylistic-type-checked`** + `eslint-plugin-react-hooks`
+  + `eslint-plugin-react-native` + `eslint-plugin-react-native-a11y/all` +
+  `eslint-plugin-unicorn/recommended`. RN 0.85 ships ESLint v9 flat config support.
+- Prettier as the formatter (separate from ESLint). `npm run format` before commit.
+- TypeScript: `tsconfig.json` extends `expo/tsconfig.base` **and** `@tsconfig/strictest`.
+  Additionally: `strict: true`, `noUncheckedIndexedAccess: true`,
+  `exactOptionalPropertyTypes: true`, `noPropertyAccessFromIndexSignature: true`.
+- Zero-warning policy: `--max-warnings=0`. CI fails on any warning.
+- **Banned**: `any`, `as` casts in committed code (parse with Zod), `console.log`
+  (use the logger in `src/observability/`), inline hex colors / magic numbers
+  in styles (use the theme tokens once a theme module exists), `Dimensions.get`
+  for layout (use `useWindowDimensions` / safe-area hooks), `@ts-ignore`
+  (use `@ts-expect-error` with a reason).
+- **Banned deps**: `moment` (use `date-fns`), `lodash` (use `es-toolkit`),
+  `axios` (use native `fetch`), `react-native-async-storage` for hot paths
+  (use MMKV when persistence is needed), any unmaintained native module
+  without New-Arch support.
+- **Required**: every screen lives under `app/` and is reached via Expo Router
+  (no manual `@react-navigation` wiring); all `StyleSheet.create` (no inline
+  style objects in render); all touchables have `accessibilityRole` +
+  `accessibilityLabel`; all public exports parse through Zod schemas at the
+  boundary.
+- Complexity caps: cyclomatic ≤ 10, function ≤ 50 lines, component file ≤ 300 lines.
+
+## 5.5 · TDD discipline
+- **Cycle**: red → green → refactor on every behavior change.
+- **Enforcement**: `code-reviewer` profile rejects diffs where the
+  production-code commit precedes the failing-test commit on the same branch.
+- **Exempt files**: none — every utility, hook, and component gets Vitest coverage
+  before merge.
+- **Test framework**: **Vitest** + `@testing-library/react-native`. `*.test.ts(x)`
+  alongside source. Query by role/label, never by `testID` for behavior.
+
+## 6 · Testing
+- **Unit / component**: **Vitest** (`vitest` + `@testing-library/react-native`).
+  Vitest is preferred over Jest for ESM-native TypeScript + Vite-aligned tooling.
+  `*.test.ts(x)` alongside source.
+- **Mocking**: **MSW** handlers in `src/mocks/handlers.ts` are the single source
+  of truth for test fixtures AND dev-server responses. Tests use `setupServer`
+  from `msw/native` in `setup-tests.ts`; dev server uses `setupWorker` from
+  `msw/native` for both web and (future) native.
+- **E2E**: **Maestro** — YAML flows in `.maestro/`, run with
+  `maestro test .maestro/` against a preview web build (the Expo web dev server
+  serves on http://localhost:8081 by default — confirm in `app.config.ts`).
+  For now Maestro runs **locally** against the Expo Web dev server. CI upgrade
+  to Maestro Cloud is TBD.
+- **Real-app target**: `npx expo start --web` brings up the full stack for E2E.
+- **Coverage**: statements ≥ 85%, branches ≥ 75%. Enforced by `vitest run --coverage` in CI.
+- **Perf budget**: web-only for now — LCP ≤ 2.0s on mid-tier mobile, JS bundle ≤ 2.0MB
+  (measured via `npx expo export` size report).
+
+## 7 · Security
+- **Secrets**: not relevant in this phase — there is no backend. When a real API
+  appears, secrets must go through `expo-secure-store` on device and env vars
+  on the server. Never inline secrets in `app.config.ts`.
+- **Public config**: only `EXPO_PUBLIC_*` vars are inlined into the bundle;
+  treat them as public.
+- **CVE scan**: `npm audit --omit=dev` + `npx osv-scanner --lockfile=package-lock.json`
+  on every CI run (must pass before merge).
+- **Secret scan**: `gitleaks` pre-commit (install via `brew install gitleaks`).
+- **SAST**: Semgrep ruleset `p/typescript` + `p/react` on CI.
+- **Transport**: TLS only in any future API call (no cleartext).
+
+## 8 · Observability
+- **Crash + error reporting**: TBD (Sentry is the likely choice when a real backend
+  exists — skip for now).
+- **Structured logging**: JSON logger in `src/observability/`, no `console.*`.
+  Logger writes to `__DEV__` console in dev and is a no-op in production until
+  Sentry is wired.
+- **Performance**: web vitals via `web-vitals` package; bundle size tracked on
+  every PR via `npx expo export --dump-sourcemap` size report.
+
+## 9 · Deployment
+- **Current**: TBD. Local Expo Web dev server is the only target. Production
+  deployment is postponed until the webapp proves itself.
+- **Future candidates** (when chosen): Vercel (zero-config Expo Web), Cloudflare
+  Pages (edge hosting, free), Fly.io (Docker container, full control). Decision
+  criterion: the webapp is feature-complete and at least N internal users
+  actively use it weekly.
+- **Channels**: not applicable yet.
+- **Rollback**: not applicable yet.
+
+## 10 · Data
+- **Local persistence**: TBD — when a feature needs it, use **MMKV** (fast KV)
+  or **`expo-sqlite`** (relational). For now, in-memory Zustand only.
+- **Sync**: not applicable — there is no backend yet. When one appears, use
+  TanStack Query + offline mutation queue with last-write-wins + server timestamps.
+- **PII**: kept on-device only when persistence is added; tokens/credentials in
+  `expo-secure-store`, never in MMKV/SQLite plaintext. No PII in logs.
+
+## 11 · Conventions
+- **Branch**: `<profile>/<ticket>-<slug>`, e.g. `frontend-coder/TASK-204-add-onboarding-flow`.
+- **Commits**: Conventional Commits, enforced by commitlint (commitlint config
+  added in the first `bootstrap-expo-webapp` PR).
+- **PR size cap**: 400 lines added (code-reviewer auto-rejects above).
+- **ADRs**: `docs/adr/NNNN-*.md` (e.g. MSW-vs-hand-rolled-mocks choice,
+  state-management choice, future-deployment target).
+
+## 12 · Per-profile overrides
+
+### frontend-coder
+- Screens are Expo Router files in `app/`; shared UI from `components/` only.
+  New Architecture is assumed — any added native module must be
+  TurboModule/Fabric-compatible (justify in the PR; not relevant for web-only).
+- **MSW handlers live in `src/mocks/handlers.ts`** — both dev-server responses
+  AND test fixtures. Don't duplicate mock data inline in `*.test.ts(x)` files;
+  pull from the handlers.
+- A11y is non-optional: `accessibilityRole` + `accessibilityLabel` on every
+  interactive element; verify with VoiceOver (web: ChromeVox / Safari VO)
+  before requesting review.
+
+### qa-e2e-tester
+- Always exercise via **Maestro** against the running Expo Web dev server
+  (`npx expo start --web` first, then `maestro test .maestro/`).
+- Flows live in `.maestro/*.yaml`. Naming: `NN-feature-name.yaml`.
+- Measure LCP / bundle size on every release; record against the perf budget.
+
+### security-auditor
+- Any secret reachable from the JS bundle (including `app.config.ts` /
+  non-`EXPO_PUBLIC_` misuse) is a blocker.
+- Verify `npm audit` + `osv-scanner` pass on the lockfile before sign-off.
+- Confirm `msw/native` polyfills are loaded before any other module in
+  `index.ts` — order matters for MSW interception.
+
+## 13 · Kanban board conventions
+- **Board slug**: `easter-hermes-wow-kanban`
+- **Card tags**: `project:easter-hermes-wow-kanban`, `phase:*`,
+  `stack:react-native`, `priority:P0|P1|P2|P3`, `adr:NNNN` (when applicable).
+- **First triage card**: `bootstrap-expo-webapp` (scaffold the project per §0).
+
+## 14 · Future-work scope (deferred, not in current sprint)
+
+When the webapp is feature-complete and at least one stakeholder commits to
+desktop/Android as a real priority, the following upgrades are required —
+do NOT start them speculatively:
+
+- **Android build**: add `eas.json` + `eas build --profile preview --platform android`
+  in CI. Requires `JAVA_HOME` + `ANDROID_HOME` on the build host (not currently
+  installed). Use `msw/native` polyfills (already chosen for this reason).
+- **iOS build**: requires macOS + Xcode + Apple Developer Program membership
+  ($99/yr). Out of scope.
+- **Desktop**: Expo does not currently have a first-class desktop target — the
+  realistic path is Electron + react-native-web, OR Tauri + a separate web
+  build. Decide when the desktop requirement becomes real.
+- **Deployment target**: pick from Vercel / Cloudflare Pages / Fly.io based on
+  traffic profile (Vercel if 95% of users are in one region, Cloudflare if
+  global edge matters, Fly.io if you need custom Docker + region pinning).
+- **Sentry**: add when crash-free sessions metric becomes a release gate.
+
+## 15 · HITL contract
+- **Tool-approval policy**: strict (every `hermes` shell action that touches
+  a non-`~/projects/easter-hermes-wow-kanban/` path requires explicit approval).
+- **Reflexion iteration cap**: 3 (planner ⇄ plan-reviewer).
+- **Mandatory HITL gates**: plan approval, ship approval, any `security-auditor:
+  vulnerable`.
+
+> **Last verified**: 2026-07-01 against https://reactnative.dev/blog/2026/02/11/react-native-0.84,
+> https://docs.expo.dev/versions/latest/ (SDK 56 → RN 0.85, React 19.2.3,
+> Node ≥ 22.13), https://mswjs.io/docs/integrations/react-native/, and the
+> local `node --version` (v26.3.0) / `npm --version` (11.16.0) outputs.
+> Remote was empty at clone time (0 commits) — §0 Bootstrap status reflects that.
