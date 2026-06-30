@@ -19,7 +19,7 @@ schema_version: 1
 # Default language for all human-facing pipeline output. Internal agent prompts
 # remain English. A card can override this per flow with:
 #   communication_language: English
-communication_language: English
+communication_language: Hungarian
 
 # GitHub pull-request delivery policy for Git-backed code-changing flows. Both
 # controls can be overridden independently at the beginning of an intake card:
