@@ -1,11 +1,11 @@
 # ===========================================================================
-# pipeline.yaml — the canonical pipeline contract for the Hermes 15-profile
+# pipeline.yaml — the canonical pipeline contract for the Hermes 20-profile
 # orchestrator. Defines: which profile does what, how stages compose into
 # paths, which invariants the orchestrator MUST enforce, and how to fall back
 # to dynamic synthesis when no path fits.
 #
 # Loaded by:
-#   ~/.hermes/profiles/orchestrator/skills/hermes-pipeline-driver/engine/config.py
+#   ~/.hermes/profiles/orchestrator/plugins/hermes-pipeline-tool/engine/config.py
 # Default location:
 #   ~/projects/<slug>/.hermes/pipeline.yaml    (per-project override)
 #   $HERMES_HOME/pipeline.yaml                 (profile-local fallback)
@@ -30,8 +30,16 @@ communication_language: Hungarian
 auto_create_pr: true
 auto_merge_pr: true
 
+# Human plan-approval policy. Conservative default: keep the existing HITL
+# approval gate. A task may override this in its leading metadata preamble:
+#   auto_accept_plan: true
+# When enabled, the active agent may auto-accept only after an explicit
+# plan-reviewer approved/zero-blocker verdict, or when no plan reviewer exists
+# and the completed pre-plan work contains no unresolved problem or question.
+auto_accept_plan: true
+
 # ---------------------------------------------------------------------------
-# PROFILE PRIMITIVES — what each of the 14 worker profiles contributes.
+# PROFILE PRIMITIVES — what each of the 19 worker profiles contributes.
 # The orchestrator profile is not a primitive (it drives the pipeline).
 # Every persistent project primitive declares a worktree. For Git-backed
 # declared paths, authoritative decompose rebases all of them into one shared
@@ -43,51 +51,990 @@ profile_primitives:
   researcher:
     role: "Reads source code and external docs, verifies claims, writes structured research dossiers."
     inputs: [intake-body]
-    outputs: [docs/research/research-dossier.md]
+    outputs:
+      - docs/research/<main-task-slug>/index.md
+      - docs/research/<main-task-slug>/questions.md
+      - docs/research/<main-task-slug>/findings/<topic>.md
+      - docs/research/<main-task-slug>/sources.md
+      - docs/research/<main-task-slug>/open-questions.md
     workspace: "worktree:<project-root>/.worktrees/<task-id>"
     keywords_hu: [kutass, kutatás, vizsgáld, tanulmányoz, hasonlítsd össze, dokumentumok]
     keywords_en: [research, investigate, study, compare, evaluate, survey, find out]
     can_follow: [intake]
+    task_skills:
+      pin_safe:
+        - kanban-card-workflow
+        - agent-researcher
+        - deep-research
+        - literature-search
+        - citation-management
+        - github-research
+        - searxng-search
+        - interactive-html-research-report
+        - kanban-subtask-orchestration
+        - project-doc-artifacts
+        - mermaid-diagram
+        - angular-developer
+      always:
+        - kanban-card-workflow
+        - kanban-subtask-orchestration
+        - project-doc-artifacts
+      rules:
+        - when:
+            keywords_any:
+              - paper
+              - papers
+              - literature
+              - study
+              - tanulmány
+              - szakirodalom
+          skills:
+            - literature-search
+            - citation-management
+        - when:
+            keywords_any:
+              - github
+              - repository
+              - repo
+              - source code
+              - forráskód
+          skills:
+            - github-research
+        - when:
+            keywords_any:
+              - interactive html
+              - interaktív html
+              - html report
+          skills:
+            - interactive-html-research-report
 
+        - when:
+            keywords_any:
+              - diagram
+              - mermaid
+              - architecture diagram
+              - ábra
+          skills:
+            - mermaid-diagram
+        - when:
+            keywords_any:
+              - angular
+              - Angular
+              - NG
+              - ng
+              - '@angular'
+          skills:
+            - angular-developer
   architect:
     role: "Designs system architecture, writes ADRs, threat models, sequence diagrams."
-    inputs: [docs/research/research-dossier.md, intake-body]
-    outputs: [docs/adr/ADR-<n>.md, system-design.md]
+    inputs: [docs/research/<main-task-slug>/index.md, docs/research/<main-task-slug>/findings, docs/research/<main-task-slug>/sources.md, intake-body]
+    outputs:
+      - docs/adr/<main-task-slug>/ADR-<n>.md
+      - docs/adr/<main-task-slug>/system-design.md
     workspace: "worktree:<project-root>/.worktrees/<task-id>"
     keywords_hu: [tervezz, architektúra, ADR, modulhatár, döntés]
     keywords_en: [design, architecture, ADR, system design, trade-off]
     can_follow: [researcher, intake]
+    task_skills:
+      pin_safe:
+        - kanban-card-workflow
+        - architecture
+        - system-design
+        - api-and-interface-design
+        - architecture-diagram
+        - improve-codebase-architecture
+        - kanban-subtask-orchestration
+        - project-doc-artifacts
+        - mermaid-diagram
+        - angular-developer
+        - vercel-react-best-practices
+        - vercel-composition-patterns
+        - vercel-react-view-transitions
+        - vercel-react-native-skills
+      always:
+        - kanban-card-workflow
+        - kanban-subtask-orchestration
+        - project-doc-artifacts
+      rules:
+        - when:
+            keywords_any:
+              - api
+              - interface
+              - contract
+              - endpoint
+              - modulhatár
+          skills:
+            - api-and-interface-design
+        - when:
+            keywords_any:
+              - diagram
+              - sequence
+              - mermaid
+              - ábra
+          skills:
+            - architecture-diagram
+        - when:
+            keywords_any:
+              - refactor
+              - restructure
+              - technical debt
+              - átalakítás
+          skills:
+            - improve-codebase-architecture
 
+        - when:
+            keywords_any:
+              - react native
+              - react-native
+              - expo
+              - mobile app
+              - ios app
+              - android app
+          skills:
+            - vercel-react-native-skills
+        - when:
+            keywords_any:
+              - react
+              - next.js
+              - nextjs
+              - jsx
+              - tsx
+          skills:
+            - vercel-react-best-practices
+        - when:
+            keywords_any:
+              - composition pattern
+              - compound component
+              - slot pattern
+              - component composition
+          skills:
+            - vercel-composition-patterns
+        - when:
+            keywords_any:
+              - view transition
+              - view transitions
+              - page transition
+              - route transition
+          skills:
+            - vercel-react-view-transitions
+        - when:
+            keywords_any:
+              - angular
+              - NG
+          skills:
+            - angular-developer
+        - when:
+            keywords_any:
+              - react native
+              - react-native
+              - expo
+              - ios app
+              - android app
+              - mobile app
+          skills:
+            - vercel-react-native-skills
+        - when:
+            keywords_any:
+              - angular
+              - Angular
+              - NG
+              - ng
+              - '@angular'
+          skills:
+            - angular-developer
+  api-designer:
+    role: Owns API contracts, OpenAPI documents, schema boundaries, and mock/API compatibility handoff.
+    inputs:
+      - docs/research/<main-task-slug>/index.md
+      - docs/research/<main-task-slug>/questions.md
+      - docs/research/<main-task-slug>/findings/<topic>.md
+      - docs/research/<main-task-slug>/sources.md
+      - docs/research/<main-task-slug>/open-questions.md
+      - system-design.md
+      - intake-body
+    outputs:
+      - docs/api/<main-task-slug>/openapi.yaml
+      - docs/api/<main-task-slug>/api-contract.md
+    workspace: worktree:<project-root>/.worktrees/<task-id>
+    keywords_hu:
+      - OpenAPI
+      - API
+      - endpoint
+      - szerződés
+      - contract
+      - MSW
+      - Zod
+    keywords_en:
+      - OpenAPI
+      - API
+      - endpoint
+      - contract
+      - schema
+      - MSW
+      - Zod
+    can_follow:
+      - architect
+      - researcher
+      - intake
+    task_skills:
+      pin_safe:
+        - kanban-card-workflow
+        - kanban-subtask-orchestration
+        - project-doc-artifacts
+        - mermaid-diagram
+        - api-and-interface-design
+        - architecture-diagram
+        - openapi-spec-generation
+      always:
+        - kanban-card-workflow
+        - kanban-subtask-orchestration
+        - project-doc-artifacts
+        - api-and-interface-design
+        - openapi-spec-generation
+      rules:
+        - when:
+            keywords_any:
+              - diagram
+              - sequence
+              - mermaid
+              - workflow
+              - ábra
+          skills:
+            - mermaid-diagram
+            - architecture-diagram
+        - when:
+            keywords_any:
+              - openapi
+              - swagger
+              - api spec
+              - api schema
+          skills:
+            - openapi-spec-generation
   ux-designer:
     role: "Designs user flows, design tokens, prototypes, accessibility audits."
     inputs: [intake-body]
-    outputs: [docs/ux/flow.md, docs/ux/tokens.json, prototype.html]
+    outputs:
+      - docs/ux/<main-task-slug>/flow.md
+      - docs/ux/<main-task-slug>/tokens.json
+      - docs/ux/<main-task-slug>/prototype.html
     workspace: "worktree:<project-root>/.worktrees/<task-id>"
     keywords_hu: [UX, design, felhasználói, prototípus, mockup, design rendszer, akadálymentes]
     keywords_en: [UX, user flow, prototype, mockup, wireframe, design system, accessibility, a11y]
     can_follow: [researcher, intake]
+    task_skills:
+      pin_safe:
+        - kanban-card-workflow
+        - design-brief
+        - information-architecture
+        - user-flow-diagram
+        - wireframe-spec
+        - component-spec
+        - handoff-spec
+        - design-token
+        - accessibility-audit
+        - accessibility-test-plan
+        - micro-interaction-spec
+        - eggproject-design
+        - impeccable
+        - kanban-subtask-orchestration
+        - project-doc-artifacts
+        - mermaid-diagram
+        - angular-developer
+      always:
+        - kanban-card-workflow
+        - kanban-subtask-orchestration
+        - project-doc-artifacts
+      rules:
+        - when:
+            keywords_any:
+              - user flow
+              - journey
+              - navigation
+              - information architecture
+              - felhasználói folyamat
+          skills:
+            - information-architecture
+            - user-flow-diagram
+        - when:
+            keywords_any:
+              - wireframe
+              - mockup
+          skills:
+            - wireframe-spec
+        - when:
+            keywords_any:
+              - component
+              - handoff
+              - implementációs átadás
+          skills:
+            - component-spec
+            - handoff-spec
+        - when:
+            keywords_any:
+              - design token
+              - tokens
+              - színrendszer
+          skills:
+            - design-token
+        - when:
+            keywords_any:
+              - accessibility
+              - a11y
+              - akadálymentes
+          skills:
+            - accessibility-audit
+            - accessibility-test-plan
+        - when:
+            keywords_any:
+              - micro interaction
+              - animation
+              - motion
+              - feedback
+          skills:
+            - micro-interaction-spec
+        - when:
+            keywords_any:
+              - eggproject
+              - egg project
+          skills:
+            - eggproject-design
+        - when:
+            keywords_any:
+              - design quality
+              - polish
+              - finomhangolás
+          skills:
+            - impeccable
 
+        - when:
+            keywords_any:
+              - angular
+              - Angular
+              - NG
+              - ng
+              - '@angular'
+          skills:
+            - angular-developer
   planner:
-    role: "Decomposes ratified architecture into executable step graphs with deps."
-    inputs: [system-design.md, intake-body]
-    outputs: [docs/plans/PLAN.md]
+    role: "Decomposes ratified architecture, API contracts, and UX into executable step graphs with deps; does not author API specs."
+    inputs:
+      - system-design.md
+      - docs/api/<main-task-slug>/api-contract.md
+      - docs/ux/<main-task-slug>/flow.md
+      - intake-body
+    outputs:
+      - docs/plans/<main-task-slug>/PLAN.md
     workspace: "worktree:<project-root>/.worktrees/<task-id>"
     keywords_hu: [tervezd meg, plan, terv, lebontás, step graph]
     keywords_en: [plan, decompose, step graph, milestones]
     can_follow: [architect]
-
+    task_skills:
+      pin_safe:
+        - kanban-card-workflow
+        - plan
+        - omh-deep-interview
+        - sequential-thinking
+        - one-three-one-rule
+        - planning-and-task-breakdown
+        - kanban-subtask-orchestration
+        - project-doc-artifacts
+        - mermaid-diagram
+        - vercel-react-best-practices
+        - vercel-composition-patterns
+        - vercel-react-view-transitions
+        - vercel-react-native-skills
+        - angular-developer
+      always:
+        - kanban-card-workflow
+        - planning-and-task-breakdown
+        - kanban-subtask-orchestration
+        - project-doc-artifacts
+      rules:
+        - when:
+            keywords_any:
+              - react native
+              - react-native
+              - expo
+              - mobile app
+              - ios app
+              - android app
+          skills:
+            - vercel-react-native-skills
+        - when:
+            keywords_any:
+              - react
+              - next.js
+              - nextjs
+              - jsx
+              - tsx
+          skills:
+            - vercel-react-best-practices
+        - when:
+            keywords_any:
+              - composition pattern
+              - compound component
+              - slot pattern
+              - component composition
+          skills:
+            - vercel-composition-patterns
+        - when:
+            keywords_any:
+              - view transition
+              - view transitions
+              - page transition
+              - route transition
+          skills:
+            - vercel-react-view-transitions
+        - when:
+            keywords_any:
+              - react native
+              - react-native
+              - expo
+              - ios app
+              - android app
+              - mobile app
+          skills:
+            - vercel-react-native-skills
+        - when:
+            keywords_any:
+              - angular
+              - NG
+          skills:
+            - angular-developer
+        - when:
+            keywords_any:
+              - angular
+              - Angular
+              - NG
+              - ng
+              - '@angular'
+          skills:
+            - angular-developer
   plan-reviewer:
     role: "Adversarial critic of planner output. Reflexion loop max 3."
     inputs: [docs/plans/PLAN.md]
-    outputs: [docs/plans/PLAN-REVIEW-rN.md]
+    outputs:
+      - docs/plans/<main-task-slug>/PLAN-REVIEW-rN.md
     workspace: "worktree:<project-root>/.worktrees/<task-id>"
     reflexion_max: 3
     keywords_hu: [kritizáld, ellenőrizd a tervet, plan review]
     keywords_en: [critique, review plan, adversarial review]
     can_follow: [planner]
+    task_skills:
+      pin_safe:
+        - kanban-card-workflow
+        - omh-ralplan
+        - one-three-one-rule
+        - api-and-interface-design
+        - kanban-subtask-orchestration
+        - project-doc-artifacts
+        - mermaid-diagram
+        - vercel-react-best-practices
+        - vercel-composition-patterns
+        - vercel-react-view-transitions
+        - vercel-react-native-skills
+        - angular-developer
+      always:
+        - kanban-card-workflow
+        - kanban-subtask-orchestration
+      rules:
+        - when:
+            keywords_any:
+              - api
+              - interface
+              - endpoint
+              - contract
+          skills:
+            - api-and-interface-design
+        - when:
+            keywords_any:
+              - angular
+              - NG
+          skills:
+            - angular-developer
+        - when:
+            keywords_any:
+              - react native
+              - react-native
+              - expo
+              - mobile app
+              - ios app
+              - android app
+          skills:
+            - vercel-react-native-skills
+        - when:
+            keywords_any:
+              - plan review report
+              - docs/plans
+              - documentation
+              - dokumentáció
+          skills:
+            - project-doc-artifacts
+        - when:
+            keywords_any:
+              - react
+              - next.js
+              - nextjs
+              - jsx
+              - tsx
+          skills:
+            - vercel-react-best-practices
+        - when:
+            keywords_any:
+              - composition pattern
+              - compound component
+              - slot pattern
+              - component composition
+          skills:
+            - vercel-composition-patterns
+        - when:
+            keywords_any:
+              - view transition
+              - view transitions
+              - page transition
+              - route transition
+          skills:
+            - vercel-react-view-transitions
+        - when:
+            keywords_any:
+              - react native
+              - react-native
+              - expo
+              - ios app
+              - android app
+              - mobile app
+          skills:
+            - vercel-react-native-skills
+  backend-unit-test-writer:
+    role: "Owns the pre-implementation Red phase for backend unit tests and mandatory bugfix/hotfix regressions; never edits production code."
+    inputs: [docs/plans/PLAN.md, system-design.md, AGENTS.md, intake-body]
+    outputs: [tests, docs/testing/BACKEND-UNIT-RED.md]
+    workspace: "worktree:<project-root>/.worktrees/<task-id>"
+    branch: "task/<task-id>"
+    keywords_hu: [backend unit teszt, TDD backend, regressziós teszt, hibareprodukció]
+    keywords_en: [backend unit test, backend TDD, regression test, reproduce bug]
+    can_follow: [planner, architect, researcher, intake]
+    task_skills:
+      pin_safe:
+        - kanban-card-workflow
+        - karpathy-guidelines
+        - test-driven-development
+        - unit-testing
+        - python-testing-patterns
+        - javascript-testing-patterns
+        - javascript-typescript-jest
+        - vitest
+        - java-junit
+        - systematic-debugging
+        - kanban-subtask-orchestration
+        - kanban-subtask-orchestration
+      always:
+        - kanban-card-workflow
+        - karpathy-guidelines
+      rules:
+        - when:
+            keywords_any:
+              - python
+              - pytest
+              - django
+              - fastapi
+          skills:
+            - python-testing-patterns
+        - when:
+            keywords_any:
+              - javascript
+              - typescript
+              - node
+              - node.js
+              - nestjs
+          skills:
+            - javascript-testing-patterns
+        - when:
+            keywords_any:
+              - jest
+          skills:
+            - javascript-typescript-jest
+        - when:
+            keywords_any:
+              - vitest
+          skills:
+            - vitest
+        - when:
+            keywords_any:
+              - java
+              - junit
+              - spring boot
+          skills:
+            - java-junit
 
+        - when:
+            stages:
+              - structured_recipe_tdd_red
+          skills:
+            - test-driven-development
+        - when:
+            stages:
+              - implement_frontend
+              - implement_backend
+              - implement_fullstack
+              - structured_recipe_execution
+          skills:
+            - kanban-subtask-orchestration
+  backend-api-test-writer:
+    role: "Owns the pre-implementation Red phase for backend API/component/contract tests; never edits production code."
+    inputs: [docs/plans/PLAN.md, system-design.md, API-spec, AGENTS.md, intake-body]
+    outputs: [tests, docs/testing/BACKEND-API-RED.md]
+    workspace: "worktree:<project-root>/.worktrees/<task-id>"
+    branch: "task/<task-id>"
+    keywords_hu: [API teszt, contract teszt, endpoint teszt, integrációs API teszt]
+    keywords_en: [API test, contract test, endpoint test, component integration test]
+    can_follow: [backend-unit-test-writer, planner, architect, researcher, intake]
+    task_skills:
+      pin_safe:
+        - kanban-card-workflow
+        - karpathy-guidelines
+        - test-driven-development
+        - api-testing
+        - contract-testing
+        - service-virtualization
+        - test-data-management
+        - python-testing-patterns
+        - javascript-testing-patterns
+        - systematic-debugging
+        - kanban-subtask-orchestration
+        - kanban-subtask-orchestration
+      always:
+        - kanban-card-workflow
+        - karpathy-guidelines
+      rules:
+        - when:
+            keywords_any:
+              - contract
+              - openapi
+              - swagger
+              - protobuf
+              - consumer
+              - provider
+          skills:
+            - contract-testing
+        - when:
+            keywords_any:
+              - third-party
+              - external service
+              - mock server
+              - wiremock
+              - külső szolgáltatás
+          skills:
+            - service-virtualization
+        - when:
+            keywords_any:
+              - fixture
+              - seed
+              - test data
+              - tesztadat
+          skills:
+            - test-data-management
+        - when:
+            keywords_any:
+              - python
+              - pytest
+              - django
+              - fastapi
+          skills:
+            - python-testing-patterns
+        - when:
+            keywords_any:
+              - javascript
+              - typescript
+              - node
+              - node.js
+              - nestjs
+          skills:
+            - javascript-testing-patterns
+
+        - when:
+            stages:
+              - structured_recipe_tdd_red
+          skills:
+            - test-driven-development
+            - api-testing
+        - when:
+            stages:
+              - implement_frontend
+              - implement_backend
+              - implement_fullstack
+              - structured_recipe_execution
+          skills:
+            - kanban-subtask-orchestration
+  frontend-unit-test-writer:
+    role: "Owns the pre-implementation Red phase for frontend unit/component/accessibility tests; never edits production code."
+    inputs: [docs/plans/PLAN.md, docs/ux/, AGENTS.md, intake-body]
+    outputs: [tests, docs/testing/FRONTEND-UNIT-RED.md]
+    workspace: "worktree:<project-root>/.worktrees/<task-id>"
+    branch: "task/<task-id>"
+    keywords_hu: [frontend unit teszt, komponens teszt, TDD frontend, UI regresszió]
+    keywords_en: [frontend unit test, component test, frontend TDD, UI regression]
+    can_follow: [planner, ux-designer, architect, researcher, intake]
+    task_skills:
+      pin_safe:
+        - kanban-card-workflow
+        - karpathy-guidelines
+        - test-driven-development
+        - javascript-testing-patterns
+        - javascript-typescript-jest
+        - vitest
+        - unit-testing
+        - accessibility-testing
+        - angular-developer
+        - systematic-debugging
+        - kanban-subtask-orchestration
+        - vercel-react-best-practices
+        - vercel-composition-patterns
+        - vercel-react-view-transitions
+        - vercel-react-native-skills
+        - kanban-subtask-orchestration
+      always:
+        - kanban-card-workflow
+        - karpathy-guidelines
+      rules:
+        - when:
+            keywords_any:
+              - jest
+          skills:
+            - javascript-typescript-jest
+        - when:
+            keywords_any:
+              - vitest
+          skills:
+            - vitest
+        - when:
+            keywords_any:
+              - accessibility
+              - a11y
+              - akadálymentes
+          skills:
+            - accessibility-testing
+        - when:
+            keywords_any:
+              - angular
+              - NG
+          skills:
+            - angular-developer
+
+        - when:
+            stages:
+              - structured_recipe_tdd_red
+          skills:
+            - test-driven-development
+            - javascript-testing-patterns
+        - when:
+            keywords_any:
+              - react native
+              - react-native
+              - expo
+              - mobile app
+              - ios app
+              - android app
+          skills:
+            - vercel-react-native-skills
+        - when:
+            keywords_any:
+              - react
+              - next.js
+              - nextjs
+              - jsx
+              - tsx
+          skills:
+            - vercel-react-best-practices
+        - when:
+            keywords_any:
+              - composition pattern
+              - compound component
+              - slot pattern
+              - component composition
+          skills:
+            - vercel-composition-patterns
+        - when:
+            keywords_any:
+              - view transition
+              - view transitions
+              - page transition
+              - route transition
+          skills:
+            - vercel-react-view-transitions
+        - when:
+            keywords_any:
+              - react native
+              - react-native
+              - expo
+              - ios app
+              - android app
+              - mobile app
+          skills:
+            - vercel-react-native-skills
+        - when:
+            stages:
+              - implement_frontend
+              - implement_backend
+              - implement_fullstack
+              - structured_recipe_execution
+          skills:
+            - kanban-subtask-orchestration
+        - when:
+            keywords_any:
+              - angular
+              - Angular
+              - NG
+              - ng
+              - '@angular'
+          skills:
+            - angular-developer
+  frontend-e2e-test-writer:
+    role: "Owns the pre-implementation acceptance-test Red phase for critical browser journeys; never edits production code. This is distinct from the post-implementation full-integration judge."
+    inputs: [docs/plans/PLAN.md, docs/ux/, API-spec, AGENTS.md, intake-body]
+    outputs: [tests, docs/testing/FRONTEND-E2E-RED.md]
+    workspace: "worktree:<project-root>/.worktrees/<task-id>"
+    branch: "task/<task-id>"
+    keywords_hu: [frontend E2E teszt, acceptance teszt, böngésző teszt, felhasználói folyamat]
+    keywords_en: [frontend E2E test, acceptance test, browser test, user journey]
+    can_follow: [frontend-unit-test-writer, planner, ux-designer, architect, researcher, intake]
+    task_skills:
+      pin_safe:
+        - kanban-card-workflow
+        - karpathy-guidelines
+        - test-driven-development
+        - e2e-testing-patterns
+        - playwright-best-practices
+        - playwright-automation
+        - cypress-automation
+        - webapp-testing
+        - test-data-management
+        - service-virtualization
+        - accessibility-testing
+        - systematic-debugging
+        - kanban-subtask-orchestration
+        - vercel-react-best-practices
+        - vercel-composition-patterns
+        - vercel-react-view-transitions
+        - vercel-react-native-skills
+        - angular-developer
+        - kanban-subtask-orchestration
+      always:
+        - kanban-card-workflow
+        - karpathy-guidelines
+      rules:
+        - when:
+            keywords_any:
+              - playwright
+          skills:
+            - playwright-best-practices
+            - playwright-automation
+        - when:
+            keywords_any:
+              - cypress
+            keywords_none:
+              - playwright
+          skills:
+            - cypress-automation
+        - when:
+            keywords_any:
+              - webapp
+              - browser
+              - frontend
+              - ui
+              - böngésző
+          skills:
+            - webapp-testing
+        - when:
+            keywords_any:
+              - fixture
+              - seed
+              - test data
+              - tesztadat
+          skills:
+            - test-data-management
+        - when:
+            keywords_any:
+              - third-party
+              - external service
+              - mock server
+              - külső szolgáltatás
+          skills:
+            - service-virtualization
+        - when:
+            keywords_any:
+              - accessibility
+              - a11y
+              - akadálymentes
+          skills:
+            - accessibility-testing
+        - when:
+            keywords_any:
+              - angular
+              - NG
+          skills:
+            - angular-developer
+        - when:
+            stages:
+              - structured_recipe_tdd_red
+          skills:
+            - test-driven-development
+            - e2e-testing-patterns
+        - when:
+            keywords_any:
+              - react native
+              - react-native
+              - expo
+              - mobile app
+              - ios app
+              - android app
+          skills:
+            - vercel-react-native-skills
+        - when:
+            keywords_any:
+              - composition pattern
+              - compound component
+              - slot pattern
+              - component composition
+          skills:
+            - vercel-composition-patterns
+        - when:
+            keywords_any:
+              - view transition
+              - view transitions
+              - page transition
+              - route transition
+          skills:
+            - vercel-react-view-transitions
+        - when:
+            keywords_any:
+              - react native
+              - react-native
+              - expo
+              - ios app
+              - android app
+              - mobile app
+          skills:
+            - vercel-react-native-skills
+        - when:
+            stages:
+              - implement_frontend
+              - implement_backend
+              - implement_fullstack
+              - structured_recipe_execution
+          skills:
+            - kanban-subtask-orchestration
+        - when:
+            keywords_any:
+              - angular
+              - Angular
+              - NG
+              - ng
+              - '@angular'
+          skills:
+            - angular-developer
   backend-coder:
-    role: "Implements server-side code per AGENTS.md. Strict lint. TDD."
+    role: "Implements server-side code per AGENTS.md. Turns dedicated Red tests Green, then refactors."
     inputs: [docs/plans/PLAN.md, system-design.md, AGENTS.md]
     outputs: [diff, tests]
     workspace: "worktree:<project-root>/.worktrees/<task-id>"
@@ -96,9 +1043,45 @@ profile_primitives:
     keywords_hu: [backend, API, szerver, endpoint, adatbázis kezelés, middleware]
     keywords_en: [backend, server, API, endpoint, route, middleware, controller]
     can_follow: [planner, architect]
+    task_skills:
+      pin_safe:
+        - kanban-card-workflow
+        - karpathy-guidelines
+        - test-driven-development
+        - systematic-debugging
+        - typescript-advanced-types
+        - github-pr-workflow
+        - kanban-subtask-orchestration
+        - kanban-subtask-orchestration
+      always:
+        - kanban-card-workflow
+        - karpathy-guidelines
+      rules:
+        - when:
+            keywords_any:
+              - typescript
+              - advanced types
+              - generic type
+          skills:
+            - typescript-advanced-types
 
+        - when:
+            stages:
+              - structured_recipe_execution
+            metadata_truthy:
+              - tdd_required
+          skills:
+            - test-driven-development
+        - when:
+            stages:
+              - implement_frontend
+              - implement_backend
+              - implement_fullstack
+              - structured_recipe_execution
+          skills:
+            - kanban-subtask-orchestration
   frontend-coder:
-    role: "Implements client-side code per design tokens. A11y, perf budget. TDD."
+    role: "Implements client-side code per design tokens. Turns dedicated Red tests Green, then refactors with a11y and performance budgets intact."
     inputs: [docs/plans/PLAN.md, docs/ux/, AGENTS.md]
     outputs: [diff, tests]
     workspace: "worktree:<project-root>/.worktrees/<task-id>"
@@ -107,7 +1090,133 @@ profile_primitives:
     keywords_hu: [frontend, UI, komponens, oldal, vászon]
     keywords_en: [frontend, UI, component, page, layout, view]
     can_follow: [planner, ux-designer, architect]
+    task_skills:
+      pin_safe:
+        - kanban-card-workflow
+        - karpathy-guidelines
+        - test-driven-development
+        - systematic-debugging
+        - angular-developer
+        - vercel-react-best-practices
+        - accessibility
+        - performance
+        - core-web-vitals
+        - eggproject-design
+        - kanban-subtask-orchestration
+        - vercel-composition-patterns
+        - vercel-react-view-transitions
+        - vercel-react-native-skills
+        - kanban-subtask-orchestration
+      always:
+        - kanban-card-workflow
+        - karpathy-guidelines
+      rules:
+        - when:
+            keywords_any:
+              - angular
+          skills:
+            - angular-developer
+        - when:
+            keywords_any:
+              - react
+              - next.js
+              - nextjs
+          skills:
+            - vercel-react-best-practices
+        - when:
+            keywords_any:
+              - accessibility
+              - a11y
+              - akadálymentes
+          skills:
+            - accessibility
+        - when:
+            keywords_any:
+              - performance
+              - core web vitals
+              - lcp
+              - cls
+              - inp
+              - teljesítmény
+          skills:
+            - performance
+            - core-web-vitals
+        - when:
+            keywords_any:
+              - eggproject
+              - egg project
+          skills:
+            - eggproject-design
 
+        - when:
+            stages:
+              - structured_recipe_execution
+            metadata_truthy:
+              - tdd_required
+          skills:
+            - test-driven-development
+        - when:
+            keywords_any:
+              - react native
+              - react-native
+              - expo
+              - mobile app
+              - ios app
+              - android app
+          skills:
+            - vercel-react-native-skills
+        - when:
+            keywords_any:
+              - react
+              - next.js
+              - nextjs
+              - jsx
+              - tsx
+          skills:
+            - vercel-react-best-practices
+        - when:
+            keywords_any:
+              - composition pattern
+              - compound component
+              - slot pattern
+              - component composition
+          skills:
+            - vercel-composition-patterns
+        - when:
+            keywords_any:
+              - view transition
+              - view transitions
+              - page transition
+              - route transition
+          skills:
+            - vercel-react-view-transitions
+        - when:
+            keywords_any:
+              - react native
+              - react-native
+              - expo
+              - ios app
+              - android app
+              - mobile app
+          skills:
+            - vercel-react-native-skills
+        - when:
+            stages:
+              - implement_frontend
+              - implement_backend
+              - implement_fullstack
+              - structured_recipe_execution
+          skills:
+            - kanban-subtask-orchestration
+        - when:
+            keywords_any:
+              - angular
+              - Angular
+              - NG
+              - ng
+              - '@angular'
+          skills:
+            - angular-developer
   data-engineer:
     role: "Owns schemas, migrations, ETL, data quality."
     inputs: [docs/plans/PLAN.md, system-design.md, AGENTS.md]
@@ -118,6 +1227,47 @@ profile_primitives:
     keywords_hu: [migráció, séma, ETL, adatfolyamat, adatbázis átalakítás]
     keywords_en: [migration, schema, ETL, data pipeline, dbt, sql changes]
     can_follow: [planner, architect]
+    task_skills:
+      pin_safe:
+        - kanban-card-workflow
+        - karpathy-guidelines
+        - test-driven-development
+        - systematic-debugging
+        - using-dbt-for-analytics-engineering
+        - adding-dbt-unit-test
+        - running-dbt-commands
+        - troubleshooting-dbt-job-errors
+        - creating-mermaid-dbt-dag
+        - kanban-subtask-orchestration
+      always:
+        - kanban-card-workflow
+        - karpathy-guidelines
+      rules:
+        - when:
+            keywords_any:
+              - dbt
+          skills:
+            - using-dbt-for-analytics-engineering
+            - running-dbt-commands
+        - when:
+            keywords_any:
+              - dbt unit test
+              - dbt test
+          skills:
+            - adding-dbt-unit-test
+        - when:
+            keywords_any:
+              - dbt error
+              - dbt failure
+          skills:
+            - troubleshooting-dbt-job-errors
+        - when:
+            keywords_any:
+              - dbt dag
+              - lineage
+              - mermaid
+          skills:
+            - creating-mermaid-dbt-dag
 
   prompt-engineer:
     role: "Designs and evaluates LLM prompts, agent loops, tool schemas."
@@ -128,6 +1278,41 @@ profile_primitives:
     keywords_hu: [prompt, LLM értékelés, eval, agent loop, tool schema]
     keywords_en: [prompt, LLM eval, agent loop, tool schema, instructor, dspy]
     can_follow: [researcher, architect, planner]
+    task_skills:
+      pin_safe:
+        - kanban-card-workflow
+        - prism-scan
+        - prism-reflect
+        - prism-3way
+        - prism-full
+        - prism-discover
+        - evaluating-llms-harness
+        - instructor
+        - kanban-subtask-orchestration
+      always:
+        - kanban-card-workflow
+      rules:
+        - when:
+            keywords_any:
+              - structured output
+              - json schema
+              - pydantic
+              - strukturált kimenet
+          skills:
+            - instructor
+        - when:
+            keywords_any:
+              - high stakes
+              - kritikus prompt
+          skills:
+            - prism-full
+        - when:
+            keywords_any:
+              - alternatives
+              - three strategies
+              - három stratégia
+          skills:
+            - prism-3way
 
   code-reviewer:
     role: "Judge. Binary approve/request-changes verdict on code diffs vs AGENTS.md."
@@ -135,37 +1320,347 @@ profile_primitives:
     outputs: [REVIEW.md]
     workspace: "worktree:<project-root>/.worktrees/<task-id>"
     can_follow: [backend-coder, frontend-coder, data-engineer, prompt-engineer]
+    task_skills:
+      pin_safe:
+        - kanban-card-workflow
+        - karpathy-guidelines
+        - code-review-and-quality
+        - github-code-review
+        - systematic-debugging
+        - kanban-subtask-orchestration
+        - vercel-react-best-practices
+        - vercel-composition-patterns
+        - vercel-react-view-transitions
+        - vercel-react-native-skills
+      always:
+        - kanban-card-workflow
+        - karpathy-guidelines
+        - kanban-subtask-orchestration
+      rules:
+        - when:
+            keywords_any:
+              - pull request
+              - github
+              - 'pr #'
+              - commit range
+          skills:
+            - github-code-review
 
+        - when:
+            stages:
+              - structured_recipe_verification
+          skills:
+            - code-review-and-quality
+        - when:
+            keywords_any:
+              - react native
+              - react-native
+              - expo
+              - mobile app
+              - ios app
+              - android app
+          skills:
+            - vercel-react-native-skills
+        - when:
+            keywords_any:
+              - react
+              - next.js
+              - nextjs
+              - jsx
+              - tsx
+          skills:
+            - vercel-react-best-practices
+        - when:
+            keywords_any:
+              - composition pattern
+              - compound component
+              - slot pattern
+              - component composition
+          skills:
+            - vercel-composition-patterns
+        - when:
+            keywords_any:
+              - view transition
+              - view transitions
+              - page transition
+              - route transition
+          skills:
+            - vercel-react-view-transitions
+        - when:
+            keywords_any:
+              - react native
+              - react-native
+              - expo
+              - ios app
+              - android app
+              - mobile app
+          skills:
+            - vercel-react-native-skills
   security-auditor:
     role: "Judge. Binary clear/vulnerable verdict on security posture."
     inputs: [diff, threat-model.md]
     outputs: [SECURITY-REVIEW.md]
     workspace: "worktree:<project-root>/.worktrees/<task-id>"
     can_follow: [code-reviewer]
+    task_skills:
+      pin_safe:
+        - kanban-card-workflow
+        - karpathy-guidelines
+        - threat-modeling
+        - testing-api-security-with-owasp-top-10
+        - performing-sca-dependency-scanning-with-snyk
+        - scanning-containers-with-trivy-in-cicd
+        - securing-github-actions-workflows
+        - performing-security-headers-audit
+        - systematic-debugging
+        - kanban-subtask-orchestration
+        - project-doc-artifacts
+      always:
+        - kanban-card-workflow
+        - karpathy-guidelines
+        - kanban-subtask-orchestration
+      rules:
+        - when:
+            keywords_any:
+              - api
+              - endpoint
+              - rest
+              - graphql
+          skills:
+            - testing-api-security-with-owasp-top-10
+        - when:
+            keywords_any:
+              - dependency
+              - package
+              - supply chain
+              - függőség
+          skills:
+            - performing-sca-dependency-scanning-with-snyk
+        - when:
+            keywords_any:
+              - container
+              - docker image
+              - image scan
+          skills:
+            - scanning-containers-with-trivy-in-cicd
+        - when:
+            keywords_any:
+              - github actions
+              - workflow
+              - ci
+          skills:
+            - securing-github-actions-workflows
+        - when:
+            keywords_any:
+              - security header
+              - csp
+              - hsts
+              - header
+          skills:
+            - performing-security-headers-audit
 
+        - when:
+            stages:
+              - structured_recipe_verification
+          skills:
+            - threat-modeling
+        - when:
+            keywords_any:
+              - security report
+              - audit report
+              - docs/security
+              - documentation
+              - dokumentáció
+          skills:
+            - project-doc-artifacts
   qa-e2e-tester:
-    role: "Judge. Runs real app, AI-driven Playwright/Cypress integration tests."
+    role: "Independent post-implementation full-integration judge. Runs the real stack and critical cross-system journeys; it does not own the pre-code Red phase."
     inputs: [diff, running-app]
     outputs: [E2E-REPORT.md, playwright-results.json]
     workspace: "worktree:<project-root>/.worktrees/<task-id>"
     branch: "test/<task-id>"
     can_follow: [security-auditor]
+    task_skills:
+      pin_safe:
+        - kanban-card-workflow
+        - karpathy-guidelines
+        - webapp-testing
+        - playwright-skill
+        - browser-testing-with-devtools
+        - systematic-debugging
+        - test-driven-development
+        - vercel-react-best-practices
+        - vercel-composition-patterns
+        - vercel-react-view-transitions
+        - vercel-react-native-skills
+      always:
+        - kanban-card-workflow
+        - karpathy-guidelines
+      rules:
+        - when:
+            keywords_any:
+              - playwright
+          skills:
+            - playwright-skill
+        - when:
+            keywords_any:
+              - webapp
+              - browser
+              - frontend
+              - ui
+              - böngésző
+          skills:
+            - webapp-testing
+        - when:
+            keywords_any:
+              - devtools
+              - performance
+              - network
+              - console
+              - core web vitals
+          skills:
+            - browser-testing-with-devtools
 
+        - when:
+            keywords_any:
+              - react
+              - next.js
+              - nextjs
+              - jsx
+              - tsx
+          skills:
+            - vercel-react-best-practices
+        - when:
+            keywords_any:
+              - composition pattern
+              - compound component
+              - slot pattern
+              - component composition
+          skills:
+            - vercel-composition-patterns
+        - when:
+            keywords_any:
+              - view transition
+              - view transitions
+              - page transition
+              - route transition
+          skills:
+            - vercel-react-view-transitions
+        - when:
+            keywords_any:
+              - react native
+              - react-native
+              - expo
+              - ios app
+              - android app
+              - mobile app
+          skills:
+            - vercel-react-native-skills
   devops-releaser:
     role: "Owns CI/CD, IaC, deploys, observability, on-call runbooks."
     inputs: [diff, deploy-spec.md]
     outputs: [RELEASE.md, deploy-log]
     workspace: "worktree:<project-root>/.worktrees/<task-id>"
     can_follow: [qa-e2e-tester]
+    task_skills:
+      pin_safe:
+        - kanban-card-workflow
+        - karpathy-guidelines
+        - ci-cd-and-automation
+        - github-pr-workflow
+        - changelog-automation
+        - docker-management
+        - incident-commander
+        - systematic-debugging
+        - kanban-subtask-orchestration
+      always:
+        - kanban-card-workflow
+        - karpathy-guidelines
+      rules:
+        - when:
+            keywords_any:
+              - docker
+              - container
+              - compose
+          skills:
+            - docker-management
+        - when:
+            keywords_any:
+              - incident
+              - sev1
+              - outage
+              - production down
+          skills:
+            - incident-commander
 
+        - when:
+            stages:
+              - structured_recipe_delivery
+          skills:
+            - ci-cd-and-automation
+            - changelog-automation
   docs-scribe:
-    role: "Owns docs, runbooks, ADR index, changelog, release notes."
-    inputs: [diff, RELEASE.md, ADR-*]
-    outputs: [CHANGELOG.md, docs/]
+    role: "Owns docs, runbooks, ADR index, changelog, and pre-release notes."
+    inputs: [diff, docs/research/, docs/plans/, ADR-*]
+    outputs:
+      - docs/<artifact-type>/<main-task-slug>/docs-sync.md
     workspace: "worktree:<project-root>/.worktrees/<task-id>"
     keywords_hu: [dokumentáció, docs, changelog, release notes, runbook, README]
     keywords_en: [documentation, docs, changelog, release notes, runbook, README, API docs]
     can_follow: [devops-releaser, qa-e2e-tester]
+    task_skills:
+      pin_safe:
+        - kanban-card-workflow
+        - diataxis
+        - documentation-and-adrs
+        - create-readme
+        - readme-i18n
+        - architecture-diagram
+        - ocr-and-documents
+        - avoid-ai-writing
+        - humanizer
+        - kanban-subtask-orchestration
+        - project-doc-artifacts
+        - mermaid-diagram
+      always:
+        - kanban-card-workflow
+        - kanban-subtask-orchestration
+        - project-doc-artifacts
+      rules:
+        - when:
+            keywords_any:
+              - readme
+          skills:
+            - create-readme
+        - when:
+            keywords_any:
+              - translated readme
+              - i18n readme
+              - lokalizált readme
+          skills:
+            - readme-i18n
+        - when:
+            keywords_any:
+              - diagram
+              - mermaid
+              - ábra
+          skills:
+            - architecture-diagram
+        - when:
+            keywords_any:
+              - ocr
+              - pdf
+              - scan
+              - scanned
+          skills:
+            - ocr-and-documents
+        - when:
+            keywords_any:
+              - humanize
+              - natural voice
+              - természetes hang
+          skills:
+            - humanizer
 
 # ---------------------------------------------------------------------------
 # STAGE TEMPLATES — reusable composable building blocks. A path is a
@@ -176,131 +1671,392 @@ stage_templates:
   research_phase:
     description: "Round A — Discovery phase. Single dossier."
     steps:
-      - { profile: researcher, parent: "<intake-id>" }
+      - {profile: researcher, parent: "<intake-id>"}
 
+    task_skills:
+      by_profile:
+        researcher:
+          - agent-researcher
   architecture_phase:
     description: "Round A — Architecture phase. ADR + system design."
     steps:
-      - { profile: architect, parent: "research_phase.last" }
+      - {profile: architect, parent: "research_phase.last"}
 
+    task_skills:
+      by_profile:
+        architect:
+          - architecture
+          - system-design
   ux_phase:
     description: "Round A optional — UX design phase after the shared research dossier."
     steps:
-      - { profile: ux-designer, parent: "research_phase.last" }
+      - {profile: ux-designer, parent: "research_phase.last"}
 
+    task_skills:
+      by_profile:
+        ux-designer:
+          - design-brief
+  api_contract_phase:
+    description: Round A — API contract phase. Owns OpenAPI/schema/mock contract artifacts before planning.
+    steps:
+      - profile: api-designer
+        parent: architecture_phase.last
+    task_skills:
+      by_profile:
+        api-designer:
+          - api-and-interface-design
+          - project-doc-artifacts
+          - mermaid-diagram
+          - openapi-spec-generation
   plan_consensus:
     description: "Round A — Plan + Reflexion loop (max 3 iterations)."
     steps:
-      - { profile: planner, parent: "architecture_phase.last" }
-      - { profile: plan-reviewer, parent: "planner.last", reflexion: true }
+      - {profile: planner, parent: "architecture_phase.last"}
+      - {profile: plan-reviewer, parent: "planner.last", reflexion: true}
 
+    task_skills:
+      by_profile:
+        planner:
+          - plan
+        plan-reviewer:
+          - omh-ralplan
   plan_consensus_with_ux:
     description: "Round A — Plan consumes both ratified architecture and UX output, then Reflexion review."
     steps:
-      - { profile: planner, parent: ["architecture_phase.last", "ux_phase.last"] }
-      - { profile: plan-reviewer, parent: "planner.last", reflexion: true }
+      - {profile: planner, parent: ["architecture_phase.last", "ux_phase.last"]}
+      - {profile: plan-reviewer, parent: "planner.last", reflexion: true}
 
+    task_skills:
+      by_profile:
+        planner:
+          - plan
+        plan-reviewer:
+          - omh-ralplan
+  plan_consensus_with_ux_and_api:
+    description: Round A — Plan consumes architecture, API contract, and UX output, then Reflexion review.
+    steps:
+      - profile: planner
+        parent:
+          - architecture_phase.last
+          - api_contract_phase.last
+          - ux_phase.last
+      - profile: plan-reviewer
+        parent: planner.last
+        reflexion: true
+    task_skills:
+      by_profile:
+        planner:
+          - plan
+          - project-doc-artifacts
+          - mermaid-diagram
+        plan-reviewer:
+          - omh-ralplan
   hitl_plan_gate:
     description: "Round A → B HITL gate — user approves PLAN.md."
     kanban_block:
       reason: "review-required: approve plan (Round A complete, awaiting user)"
 
   implement_backend:
-    description: "Round B — Backend implementation with full judge chain."
+    description: "Round B — Backend TDD: unit Red → API/contract Red → implementation Green/Refactor → full judge chain."
+    task_metadata:
+      tdd_required: true
+      tdd_mode: red-green-refactor
+      test_writer_chain: backend-unit-test-writer -> backend-api-test-writer
     steps:
-      - { profile: backend-coder, parent: "hitl_plan_gate.last" }
-      - { profile: code-reviewer, parent: "backend-coder.last" }
-      - { profile: security-auditor, parent: "code-reviewer.last" }
-      - { profile: qa-e2e-tester, parent: "security-auditor.last" }
+      - {profile: backend-unit-test-writer, parent: "hitl_plan_gate.last"}
+      - {profile: backend-api-test-writer, parent: "backend-unit-test-writer.last"}
+      - {profile: backend-coder, parent: "backend-api-test-writer.last"}
+      - {profile: code-reviewer, parent: "backend-coder.last"}
+      - {profile: security-auditor, parent: "code-reviewer.last"}
+      - {profile: qa-e2e-tester, parent: "security-auditor.last"}
 
+    task_skills:
+      by_profile:
+        backend-unit-test-writer:
+          - test-driven-development
+          - kanban-subtask-orchestration
+        backend-api-test-writer:
+          - test-driven-development
+          - api-testing
+          - kanban-subtask-orchestration
+        backend-coder:
+          - test-driven-development
+          - kanban-subtask-orchestration
+        code-reviewer:
+          - code-review-and-quality
+        security-auditor:
+          - threat-modeling
   implement_frontend:
-    description: "Round B — Frontend implementation with full judge chain."
+    description: "Round B — Frontend TDD/ATDD: unit/component Red → acceptance/E2E Red → implementation Green/Refactor → full judge chain."
+    task_metadata:
+      tdd_required: true
+      tdd_mode: red-green-refactor-plus-acceptance-red
+      test_writer_chain: frontend-unit-test-writer -> frontend-e2e-test-writer
     steps:
-      - { profile: frontend-coder, parent: "hitl_plan_gate.last" }
-      - { profile: code-reviewer, parent: "frontend-coder.last" }
-      - { profile: security-auditor, parent: "code-reviewer.last" }
-      - { profile: qa-e2e-tester, parent: "security-auditor.last" }
+      - {profile: frontend-unit-test-writer, parent: "hitl_plan_gate.last"}
+      - {profile: frontend-e2e-test-writer, parent: "frontend-unit-test-writer.last"}
+      - {profile: frontend-coder, parent: "frontend-e2e-test-writer.last"}
+      - {profile: code-reviewer, parent: "frontend-coder.last"}
+      - {profile: security-auditor, parent: "code-reviewer.last"}
+      - {profile: qa-e2e-tester, parent: "security-auditor.last"}
 
+    task_skills:
+      by_profile:
+        frontend-unit-test-writer:
+          - test-driven-development
+          - javascript-testing-patterns
+          - kanban-subtask-orchestration
+        frontend-e2e-test-writer:
+          - test-driven-development
+          - e2e-testing-patterns
+          - kanban-subtask-orchestration
+        frontend-coder:
+          - test-driven-development
+          - kanban-subtask-orchestration
+        code-reviewer:
+          - code-review-and-quality
+        security-auditor:
+          - threat-modeling
+        qa-e2e-tester:
+          - webapp-testing
+  implement_frontend_after_backend:
+    description: "Round B — Frontend TDD/ATDD after the backend branch is fully judged; shared-worktree writes are serialized."
+    task_metadata:
+      tdd_required: true
+      tdd_mode: red-green-refactor-plus-acceptance-red
+      test_writer_chain: frontend-unit-test-writer -> frontend-e2e-test-writer
+    steps:
+      - {profile: frontend-unit-test-writer, parent: "implement_backend.last"}
+      - {profile: frontend-e2e-test-writer, parent: "frontend-unit-test-writer.last"}
+      - {profile: frontend-coder, parent: "frontend-e2e-test-writer.last"}
+      - {profile: code-reviewer, parent: "frontend-coder.last"}
+      - {profile: security-auditor, parent: "code-reviewer.last"}
+      - {profile: qa-e2e-tester, parent: "security-auditor.last"}
+
+    task_skills:
+      by_profile:
+        frontend-unit-test-writer:
+          - test-driven-development
+          - javascript-testing-patterns
+        frontend-e2e-test-writer:
+          - test-driven-development
+          - e2e-testing-patterns
+        frontend-coder:
+          - test-driven-development
+        code-reviewer:
+          - code-review-and-quality
+        security-auditor:
+          - threat-modeling
+        qa-e2e-tester:
+          - webapp-testing
   implement_data:
     description: "Round B — Data engineering implementation with full judge chain."
     steps:
-      - { profile: data-engineer, parent: "hitl_plan_gate.last" }
-      - { profile: code-reviewer, parent: "data-engineer.last" }
-      - { profile: security-auditor, parent: "code-reviewer.last" }
-      - { profile: qa-e2e-tester, parent: "security-auditor.last" }
+      - {profile: data-engineer, parent: "hitl_plan_gate.last"}
+      - {profile: code-reviewer, parent: "data-engineer.last"}
+      - {profile: security-auditor, parent: "code-reviewer.last"}
+      - {profile: qa-e2e-tester, parent: "security-auditor.last"}
 
+    task_skills:
+      by_profile:
+        data-engineer:
+          - test-driven-development
+        code-reviewer:
+          - code-review-and-quality
+        security-auditor:
+          - threat-modeling
   implement_prompt:
     description: "Round B — Prompt engineering with code-review (no security/qa for prompts unless agent tools change)."
     steps:
-      - { profile: prompt-engineer, parent: "hitl_plan_gate.last" }
-      - { profile: code-reviewer, parent: "prompt-engineer.last" }
+      - {profile: prompt-engineer, parent: "hitl_plan_gate.last"}
+      - {profile: code-reviewer, parent: "prompt-engineer.last"}
 
+    task_skills:
+      by_profile:
+        prompt-engineer:
+          - prism-scan
+          - evaluating-llms-harness
+        code-reviewer:
+          - code-review-and-quality
+  integration_synthesis_phase:
+    description: "Round C preparation — integrate all judged implementation outputs in the shared worktree, reconcile overlaps, and run the combined validation baseline. This is not PR, merge, deploy, or release work."
+    expected_outputs: [docs/integration/INTEGRATION-REPORT.md]
+    task_metadata:
+      integration_mode: shared-worktree-fan-in
+      pr_mutation_allowed: false
+    steps:
+      - {profile: devops-releaser, parent: "<implementation-stage-leaves>"}
+
+    task_skills:
+      by_profile:
+        devops-releaser:
+          - ci-cd-and-automation
+  docs_sync_phase:
+    description: "Round C preparation — update docs, changelog, and release notes in the already integrated shared worktree before ship approval."
+    steps:
+      - {profile: docs-scribe, parent: "<segment-leaves>"}
+
+    task_skills:
+      by_profile:
+        docs-scribe:
+          - diataxis
+          - documentation-and-adrs
+          - avoid-ai-writing
   hitl_ship_gate:
-    description: "Round B → C HITL gate — user approves ship."
+    description: "Round C ship gate — user approves the integrated code and documentation."
     kanban_block:
-      reason: "review-required: approve ship (Round B complete, judges cleared)"
+      reason: "review-required: approve ship (integration and docs complete)"
 
   release_phase:
-    description: "Round C — Deploy + release notes."
+    description: "Terminal Round C — create/reuse the single final PR, wait for green CI, merge when policy allows, then deploy/release if the card is a production release."
+    task_metadata:
+      delivery_mode: final-release
+      pr_mutation_allowed: true
     steps:
-      - { profile: devops-releaser, parent: "hitl_ship_gate.last" }
+      - {profile: devops-releaser, parent: "hitl_ship_gate.last"}
 
-  docs_sync_phase:
-    description: "Round C — Docs sync after release."
-    steps:
-      - { profile: docs-scribe, parent: "release_phase.last" }
+    # Single-profile templates for narrow paths
 
-  # Single-profile templates for narrow paths
-
+    task_skills:
+      by_profile:
+        devops-releaser:
+          - ci-cd-and-automation
+          - changelog-automation
   research_only:
     description: "Just the researcher dossier — terminal."
     steps:
-      - { profile: researcher, parent: "<intake-id>" }
+      - {profile: researcher, parent: "<intake-id>"}
 
+    task_skills:
+      by_profile:
+        researcher:
+          - agent-researcher
   ux_only:
     description: "Just UX design output — terminal at gate."
     steps:
-      - { profile: ux-designer, parent: "<intake-id>" }
+      - {profile: ux-designer, parent: "<intake-id>"}
 
+    task_skills:
+      by_profile:
+        ux-designer:
+          - design-brief
   docs_only:
     description: "Just docs-scribe — terminal at gate."
     steps:
-      - { profile: docs-scribe, parent: "<intake-id>" }
+      - {profile: docs-scribe, parent: "<intake-id>"}
 
+    task_skills:
+      by_profile:
+        docs-scribe:
+          - diataxis
+          - documentation-and-adrs
+          - avoid-ai-writing
   security_audit_only:
     description: "security-auditor scoped to a specific area."
     steps:
-      - { profile: security-auditor, parent: "<intake-id>" }
+      - {profile: security-auditor, parent: "<intake-id>"}
 
+    task_skills:
+      by_profile:
+        security-auditor:
+          - threat-modeling
   e2e_only:
     description: "qa-e2e-tester run new tests against running stack."
     steps:
-      - { profile: qa-e2e-tester, parent: "<intake-id>" }
+      - {profile: qa-e2e-tester, parent: "<intake-id>"}
 
+    task_skills:
+      by_profile:
+        qa-e2e-tester:
+          - webapp-testing
   code_review_only:
     description: "Standalone code review of an existing PR or commit range."
     steps:
-      - { profile: code-reviewer, parent: "<intake-id>" }
+      - {profile: code-reviewer, parent: "<intake-id>"}
 
+    task_skills:
+      by_profile:
+        code-reviewer:
+          - code-review-and-quality
+          - github-code-review
   prompt_eval_only:
     description: "Prompt engineering iteration + eval, no production code change."
     steps:
-      - { profile: prompt-engineer, parent: "<intake-id>" }
-      - { profile: code-reviewer, parent: "prompt-engineer.last" }
+      - {profile: prompt-engineer, parent: "<intake-id>"}
+      - {profile: code-reviewer, parent: "prompt-engineer.last"}
 
-  hotfix_phase:
-    description: "Skip Round A. Direct fix → judges → release."
+    task_skills:
+      by_profile:
+        prompt-engineer:
+          - prism-scan
+          - evaluating-llms-harness
+        code-reviewer:
+          - code-review-and-quality
+  implement_backend_bugfix:
+    description: "Bugfix TDD — reproduce with a permanent regression test before implementation, then run the full judge chain."
+    task_metadata:
+      change_kind: bugfix
+      tdd_required: true
+      tdd_mode: regression-red-green-refactor
+      regression_test_required: true
+      minimum_regression_tests: 1
+      test_writer_chain: backend-unit-test-writer -> backend-api-test-writer
     steps:
-      - { profile: backend-coder, parent: "<intake-id>" }   # default coder; orchestrator may sub frontend-coder / data-engineer based on intake body
-      - { profile: code-reviewer, parent: "backend-coder.last" }
-      - { profile: security-auditor, parent: "code-reviewer.last" }
-      - { profile: qa-e2e-tester, parent: "security-auditor.last" }
+      - {profile: backend-unit-test-writer, parent: "research_phase.last"}
+      - {profile: backend-api-test-writer, parent: "backend-unit-test-writer.last"}
+      - {profile: backend-coder, parent: "backend-api-test-writer.last"}
+      - {profile: code-reviewer, parent: "backend-coder.last"}
+      - {profile: security-auditor, parent: "code-reviewer.last"}
+      - {profile: qa-e2e-tester, parent: "security-auditor.last"}
 
+    task_skills:
+      by_profile:
+        backend-unit-test-writer:
+          - test-driven-development
+        backend-api-test-writer:
+          - test-driven-development
+          - api-testing
+        backend-coder:
+          - test-driven-development
+        code-reviewer:
+          - code-review-and-quality
+        security-auditor:
+          - threat-modeling
+  hotfix_phase:
+    description: "Skip Round A, but never skip regression-first TDD: reproduce → fix → judges → release."
+    task_metadata:
+      change_kind: hotfix
+      tdd_required: true
+      tdd_mode: regression-red-green-refactor
+      regression_test_required: true
+      minimum_regression_tests: 1
+      test_writer_chain: backend-unit-test-writer -> backend-api-test-writer
+    steps:
+      - {profile: backend-unit-test-writer, parent: "<intake-id>"}
+      - {profile: backend-api-test-writer, parent: "backend-unit-test-writer.last"}
+      - {profile: backend-coder, parent: "backend-api-test-writer.last"}
+      - {profile: code-reviewer, parent: "backend-coder.last"}
+      - {profile: security-auditor, parent: "code-reviewer.last"}
+      - {profile: qa-e2e-tester, parent: "security-auditor.last"}
+
+    task_skills:
+      by_profile:
+        backend-unit-test-writer:
+          - test-driven-development
+        backend-api-test-writer:
+          - test-driven-development
+          - api-testing
+        backend-coder:
+          - test-driven-development
+        code-reviewer:
+          - code-review-and-quality
+        security-auditor:
+          - threat-modeling
   spike_phase:
     description: "Throwaway experiment — researcher + 1 coder card with scratch workspace, no judges."
     steps:
-      - { profile: researcher, parent: "<intake-id>", workspace_override: "scratch" }
-      - { profile: backend-coder, parent: "researcher.last", workspace_override: "scratch" }   # both cards are intentionally throwaway
+      - {profile: researcher, parent: "<intake-id>", workspace_override: "scratch"}
+      - {profile: backend-coder, parent: "researcher.last", workspace_override: "scratch"}           # both cards are intentionally throwaway
 
 
 # ---------------------------------------------------------------------------
@@ -313,38 +2069,71 @@ paths:
   # ===== Full pipelines (multi-stage) =====
 
   feature_backend:
-    description: "Full backend feature — research+arch+plan → backend → judges → ship → docs."
+    description: "Full backend feature — research+arch+plan → backend+judges → synthesis → docs → ship → release."
     classifier_keywords_hu: [új feature backend, backend feature, szerver oldali, új API, új endpoint, REST, middleware, rate limit]
     classifier_keywords_en: [feature, backend feature, new API, new endpoint, REST API, server-side feature, rate limit, rate limiting, middleware, endpoint]
-    stages: [research_phase, architecture_phase, plan_consensus, hitl_plan_gate, implement_backend, hitl_ship_gate, release_phase, docs_sync_phase]
+    stages:
+      - research_phase
+      - architecture_phase
+      - api_contract_phase
+      - plan_consensus
+      - hitl_plan_gate
+      - implement_backend
+      - integration_synthesis_phase
+      - docs_sync_phase
+      - hitl_ship_gate
+      - release_phase
     terminal: false
 
   feature_frontend:
-    description: "Full frontend feature — research+arch+UX+plan → frontend → judges → ship → docs."
+    description: "Full frontend feature — research+arch+UX+plan → frontend+judges → synthesis → docs → ship → release."
     classifier_keywords_hu: [új UI, frontend feature, kliens oldali, új oldal, új komponens UI-val]
     classifier_keywords_en: [feature frontend, new UI feature, new page, new screen, UI component, new view]
-    stages: [research_phase, architecture_phase, ux_phase, plan_consensus_with_ux, hitl_plan_gate, implement_frontend, hitl_ship_gate, release_phase, docs_sync_phase]
+    stages:
+      - research_phase
+      - architecture_phase
+      - ux_phase
+      - api_contract_phase
+      - plan_consensus_with_ux_and_api
+      - hitl_plan_gate
+      - implement_frontend
+      - integration_synthesis_phase
+      - docs_sync_phase
+      - hitl_ship_gate
+      - release_phase
     terminal: false
 
   feature_fullstack:
-    description: "Full-stack feature touching backend + frontend (parallel implement) + judges per side."
+    description: "Full-stack feature touching backend + frontend. Shared-worktree write stages are serialized, then synthesized before one release."
     classifier_keywords_hu: [full stack, teljes funkció, backend és frontend]
     classifier_keywords_en: [full-stack, full stack feature, end-to-end feature]
-    stages: [research_phase, architecture_phase, ux_phase, plan_consensus_with_ux, hitl_plan_gate, implement_backend, implement_frontend, hitl_ship_gate, release_phase, docs_sync_phase]
+    stages:
+      - research_phase
+      - architecture_phase
+      - ux_phase
+      - api_contract_phase
+      - plan_consensus_with_ux_and_api
+      - hitl_plan_gate
+      - implement_backend
+      - implement_frontend_after_backend
+      - integration_synthesis_phase
+      - docs_sync_phase
+      - hitl_ship_gate
+      - release_phase
     terminal: false
 
   feature_data:
     description: "Data engineering feature — schema/migration/ETL with judges + release."
     classifier_keywords_hu: [új tábla, séma változás, migráció, ETL, adatfolyamat]
     classifier_keywords_en: [schema change, migration, ETL, data pipeline, new table, dbt model]
-    stages: [research_phase, architecture_phase, plan_consensus, hitl_plan_gate, implement_data, hitl_ship_gate, release_phase, docs_sync_phase]
+    stages: [research_phase, architecture_phase, plan_consensus, hitl_plan_gate, implement_data, integration_synthesis_phase, docs_sync_phase, hitl_ship_gate, release_phase]
     terminal: false
 
   feature_prompt:
     description: "Prompt engineering production change with eval + code review."
     classifier_keywords_hu: [új prompt produkciós, agent prompt változtatás, LLM eval]
     classifier_keywords_en: [prompt update, agent loop change, LLM behaviour change, tool schema]
-    stages: [research_phase, architecture_phase, plan_consensus, hitl_plan_gate, implement_prompt, hitl_ship_gate, release_phase, docs_sync_phase]
+    stages: [research_phase, architecture_phase, plan_consensus, hitl_plan_gate, implement_prompt, integration_synthesis_phase, docs_sync_phase, hitl_ship_gate, release_phase]
     terminal: false
 
   # ===== Planning-only / Discovery paths =====
@@ -380,24 +2169,44 @@ paths:
   # ===== Narrow operational paths =====
 
   hotfix:
-    description: "Skip Round A. Direct coder fix + judges + release."
+    description: "Skip Round A, but require a dedicated failing regression test before the urgent fix, then judges + release."
     classifier_keywords_hu: [hotfix, gyors javítás, kritikus bug, prod crash, P0, urgent]
     classifier_keywords_en: [hotfix, urgent fix, critical bug, prod down, P0, sev1]
-    stages: [hotfix_phase, hitl_ship_gate, release_phase]
+    stages: [hotfix_phase, integration_synthesis_phase, docs_sync_phase, hitl_ship_gate, release_phase]
     terminal: false
 
+    task_skills:
+      by_profile:
+        backend-unit-test-writer:
+          - systematic-debugging
+        backend-api-test-writer:
+          - systematic-debugging
+        backend-coder:
+          - systematic-debugging
+        qa-e2e-tester:
+          - systematic-debugging
   bugfix:
-    description: "Normal bug fix flow — short research + coder + judges + release."
+    description: "Normal bug fix flow — short research + mandatory failing regression test + fix + judges + release."
     classifier_keywords_hu: [bug fix, hibajavítás, bug]
     classifier_keywords_en: [bug fix, bug, fix issue]
-    stages: [research_phase, implement_backend, hitl_ship_gate, release_phase]
+    stages: [research_phase, implement_backend_bugfix, integration_synthesis_phase, docs_sync_phase, hitl_ship_gate, release_phase]
     terminal: false
 
+    task_skills:
+      by_profile:
+        backend-unit-test-writer:
+          - systematic-debugging
+        backend-api-test-writer:
+          - systematic-debugging
+        backend-coder:
+          - systematic-debugging
+        qa-e2e-tester:
+          - systematic-debugging
   refactor:
     description: "Refactor (no behaviour change) — small research + plan gate + coder + judges + release."
     classifier_keywords_hu: [refaktor, refactor, átalakítás kód minőség, technical debt, módosítsd a stílust]
     classifier_keywords_en: [refactor, code cleanup, technical debt, restructure]
-    stages: [research_phase, hitl_plan_gate, implement_backend, hitl_ship_gate, release_phase]
+    stages: [research_phase, hitl_plan_gate, implement_backend, integration_synthesis_phase, docs_sync_phase, hitl_ship_gate, release_phase]
     terminal: false
 
   security_audit_only:
@@ -411,9 +2220,16 @@ paths:
     description: "Performance optimization — research baseline + coder + judges + e2e on running stack."
     classifier_keywords_hu: [teljesítmény, optimalizáció, perf, lassú, gyorsítsd]
     classifier_keywords_en: [performance, optimization, perf, slow, speed up, latency]
-    stages: [research_phase, plan_consensus, hitl_plan_gate, implement_backend, hitl_ship_gate, release_phase]
+    stages: [research_phase, plan_consensus, hitl_plan_gate, implement_backend, integration_synthesis_phase, docs_sync_phase, hitl_ship_gate, release_phase]
     terminal: false
 
+    task_skills:
+      by_profile:
+        frontend-coder:
+          - performance
+          - core-web-vitals
+        qa-e2e-tester:
+          - browser-testing-with-devtools
   e2e_only:
     description: "Just qa-e2e-tester runs new tests against running stack."
     classifier_keywords_hu: [E2E tesztek, integráció, futtass teszteket, smoke test]
@@ -439,21 +2255,21 @@ paths:
     description: "Docs-scribe only — README/changelog/API docs update."
     classifier_keywords_hu: [dokumentáció frissítés, csak docs, README, changelog]
     classifier_keywords_en: [docs only, documentation update, README, changelog, API docs]
-    stages: [docs_only, hitl_plan_gate]   # plan gate here = "approve docs draft"
+    stages: [docs_only, hitl_plan_gate]     # plan gate here = "approve docs draft"
     terminal: true
 
   deploy_only:
     description: "Release/deploy a commit/tag that's already been judged elsewhere. Still gated by ship-HITL."
     classifier_keywords_hu: [deploy, release, kihelyez, élesítsd, kiadás]
     classifier_keywords_en: [deploy, release, ship the build, cut release]
-    stages: [hitl_ship_gate, release_phase, docs_sync_phase]
+    stages: [docs_sync_phase, hitl_ship_gate, release_phase]
     terminal: false
 
   monitoring_setup:
     description: "Setting up observability — metrics/logs/alerts. Goes through architect + backend."
     classifier_keywords_hu: [monitorozás, megfigyelhetőség, metrika, alert, dashboard]
     classifier_keywords_en: [observability, monitoring, metrics, alerts, dashboard, SLO]
-    stages: [research_phase, architecture_phase, plan_consensus, hitl_plan_gate, implement_backend, hitl_ship_gate, release_phase]
+    stages: [research_phase, architecture_phase, plan_consensus, hitl_plan_gate, implement_backend, integration_synthesis_phase, docs_sync_phase, hitl_ship_gate, release_phase]
     terminal: false
 
 
@@ -476,8 +2292,25 @@ invariants:
     enforce: engine-compose-time
     waived_in: [spike, prompt_eval_only]
 
+  - id: frontend-backend-code-requires-red-test-predecessors
+    description: "Every declared frontend/backend production coder card must have its two dedicated Red test-writer predecessors in order before implementation. Frontend E2E here is acceptance-test Red; qa-e2e-tester remains the post-code full-integration judge."
+    enforce: engine-compose-time
+    waived_in: [spike]
+
+  - id: bugfix-hotfix-require-regression-test-first
+    description: "Every bugfix/hotfix implementation must be preceded by a separate test-writer card that proves the defect with at least one permanent failing regression test before production code changes."
+    enforce: engine-compose-time
+
   - id: ship-requires-hitl
     description: "No release_phase without an immediately preceding hitl_ship_gate."
+    enforce: engine-compose-time
+
+  - id: release-is-terminal
+    description: "Every non-terminal production path ends with exactly one release_phase; documentation and integration must precede the ship gate and release."
+    enforce: engine-compose-time
+
+  - id: write-heavy-fan-in-before-release
+    description: "Code-changing production paths synthesize judged outputs in the shared worktree before docs, ship approval, and the single final release card. Parallel write-heavy stages are not allowed in one shared worktree."
     enforce: engine-compose-time
 
   - id: plan-requires-hitl
@@ -523,11 +2356,64 @@ dynamic_synthesis:
   # Capacity is part of decomposition. A profile match alone is not enough: a
   # worker card must be small enough to finish and verify before agent.max_turns.
   task_sizing:
-    max_body_chars_per_worker: 4500
-    max_recipe_steps_per_worker: 2
+    # No universal turn-count standard exists. These package defaults implement
+    # the 2026 one-loop milestone pattern: one primary deliverable, one ordered
+    # recipe step, a small acceptance surface, and independently executable checks.
+    max_body_chars_per_worker: 3200
+    max_recipe_steps_per_worker: 1
     max_verification_commands_per_worker: 5
-    min_steps_to_split: 4
-    max_estimated_turn_units_per_worker: 55
+    max_acceptance_items_per_worker: 5
+    min_steps_to_split: 2
+    max_estimated_turn_units_per_worker: 50
+
+  # Semantic second-pass decomposition. Deterministic path selection stays
+  # authoritative; AIAgent assesses every eligible specialist card for true
+  # atomicity, independent of body length or numbered-step count. Reviews are
+  # batched with bounded whole-graph context. Mutating work remains a sequential
+  # Kanban chain; selected analysis/review/docs profiles may use read-only
+  # scratch shards followed by one synthesis card.
+  ai_task_decomposition:
+    enabled: true
+    assessment_mode: all-eligible
+    max_specs_per_batch: 6
+    max_graph_context_chars: 18000
+    max_subtasks: 6
+    max_parallel_subtasks: 4
+    contract_timeout_seconds: 180
+    request_timeout_seconds: 120
+    total_timeout_seconds: 600
+    # Run the second-pass atomicity review after profile-specific contracts are
+    # synthesized. This is the durable Kanban replacement for helper delegation:
+    # an oversized specialist card may become child cards plus one synthesis card.
+    post_contract_atomicity_review: true
+    max_attempts: 2
+    # AIAgent model/provider resolution. The default explicitly mirrors the
+    # orchestrator profile config.yaml. Use caller_profile to read the active
+    # $HERMES_HOME/config.yaml, or explicit to use the nested model mapping.
+    agent:
+      model_source: orchestrator_profile
+      model:
+        provider: ""
+        default: ""
+        base_url: ""
+        api_mode: ""
+      quiet_mode: false
+      verbose_logging: true
+    skill: planning-and-task-breakdown
+    fail_policy: keep-original
+    parallel_synthesis_profiles:
+      - researcher
+      - architect
+      - ux-designer
+      - planner
+      - plan-reviewer
+      - code-reviewer
+      - security-auditor
+      - docs-scribe
+    atomic_stages:
+      - integration_synthesis_phase
+      - release_phase
+      - structured_recipe_delivery
 
   # Shared Git worktrees are materialized before child cards are created.
   # A task-body `base_branch: <name>` directive overrides this global value.
@@ -577,3 +2463,12 @@ user_overrides:
   example_usage: |
     kind: plan_only
     Tervezzünk meg egy authentikáció flow-t Google + GitHub OAuth-szal.
+task_skill_routing:
+  max_pinned_skills: 10
+  unknown_skill_policy: fail-closed
+  orchestrator_tasks: soul-managed-unpinned
+review_policy:
+  minor_findings: block
+  major_findings: block
+  blocker_findings: block
+  allowed_minor_budget: 0
